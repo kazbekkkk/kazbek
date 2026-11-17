@@ -1,0 +1,188 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, sendEmailVerification,
+  updateProfile, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig, KAZBEK_LEARN } from "./firebase-config.js";
+
+export const isConfigured =
+  Boolean(firebaseConfig.apiKey) && !/^YOUR_/i.test(firebaseConfig.apiKey);
+
+let auth = null;
+let db = null;
+
+if (isConfigured) {
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  auth.languageCode = "ru";
+  db = getFirestore(app);
+}
+
+function requireFirebase() {
+  if (!isConfigured) {
+    const err = new Error("Firebase не настроен");
+    err.code = "kazbek/not-configured";
+    throw err;
+  }
+}
+
+/* ---------- Сообщения об ошибках на русском ---------- */
+const MESSAGES = {
+  "kazbek/not-configured": "Firebase ещё не подключён. Добавьте ключи проекта в js/firebase-config.js.",
+  "kazbek/learn-not-configured": "Привязка заработает после подключения Казбек Learn (js/firebase-config.js).",
+  "kazbek/learn-failed": "Не удалось привязать Казбек Learn. Попробуйте позже.",
+  "auth/invalid-email": "Проверьте адрес почты — он указан неверно.",
+  "auth/user-not-found": "Аккаунт с такой почтой не найден.",
+  "auth/wrong-password": "Неверный пароль. Попробуйте ещё раз или восстановите пароль.",
+  "auth/invalid-credential": "Неверная почта или пароль.",
+  "auth/invalid-login-credentials": "Неверная почта или пароль.",
+  "auth/email-already-in-use": "Аккаунт с такой почтой уже есть. Войдите или восстановите пароль.",
+  "auth/weak-password": "Пароль слишком простой. Используйте не меньше 8 символов.",
+  "auth/too-many-requests": "Слишком много попыток. Подождите немного и повторите.",
+  "auth/network-request-failed": "Нет связи с сервером. Проверьте интернет.",
+  "auth/popup-closed-by-user": "Окно входа закрыто до завершения.",
+  "auth/cancelled-popup-request": "Окно входа закрыто до завершения.",
+  "auth/popup-blocked": "Браузер заблокировал окно Google. Разрешите всплывающие окна.",
+  "auth/user-disabled": "Этот аккаунт заблокирован.",
+  "auth/operation-not-allowed": "Этот способ входа не включён в Firebase Console.",
+  "auth/unauthorized-domain": "Домен сайта не добавлен в Authorized domains в Firebase Console.",
+  "auth/requires-recent-login": "Для этого действия войдите заново."
+};
+
+export function humanError(err) {
+  return MESSAGES[err?.code] || "Не удалось выполнить действие. Попробуйте ещё раз.";
+}
+
+export function isSilentError(err) {
+  return err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request";
+}
+
+/* ---------- Профиль в Firestore ---------- */
+async function ensureUserDoc(user, extra = {}) {
+  try {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        displayName: user.displayName || extra.displayName || "",
+        email: user.email || "",
+        createdAt: serverTimestamp(),
+        services: { learn: { linked: false } }
+      });
+    }
+  } catch (e) {
+    // Правила Firestore могут быть ещё не настроены — вход при этом не ломаем.
+    console.warn("Не удалось создать профиль в Firestore:", e);
+  }
+}
+
+export async function getProfile(uid) {
+  if (!isConfigured) return null;
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.warn("Не удалось прочитать профиль:", e);
+    return null;
+  }
+}
+
+/* ---------- Состояние входа ---------- */
+export function watchAuth(callback) {
+  if (!isConfigured) {
+    callback(null);
+    return () => {};
+  }
+  return onAuthStateChanged(auth, callback);
+}
+
+export function currentUser() {
+  return auth?.currentUser || null;
+}
+
+/* ---------- Действия ---------- */
+export async function register({ name, email, password }) {
+  requireFirebase();
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(cred.user, { displayName: name });
+  await ensureUserDoc(cred.user, { displayName: name });
+  sendEmailVerification(cred.user).catch(() => {});
+  return cred.user;
+}
+
+export async function login(email, password) {
+  requireFirebase();
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
+}
+
+export async function loginWithGoogle() {
+  requireFirebase();
+  const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+  await ensureUserDoc(cred.user);
+  return cred.user;
+}
+
+export async function resetPassword(email) {
+  requireFirebase();
+  await sendPasswordResetEmail(auth, email);
+}
+
+export async function logout() {
+  requireFirebase();
+  await signOut(auth);
+}
+
+export async function updateName(name) {
+  requireFirebase();
+  const user = auth.currentUser;
+  await updateProfile(user, { displayName: name });
+  try {
+    await setDoc(doc(db, "users", user.uid), { displayName: name }, { merge: true });
+  } catch (e) {
+    console.warn("Не удалось обновить имя в Firestore:", e);
+  }
+  return user;
+}
+
+export async function resendVerification() {
+  requireFirebase();
+  await sendEmailVerification(auth.currentUser);
+}
+
+/* ---------- Привязка Казбек Learn ----------
+   Схема: сайт Казбек отправляет свой ID-токен в Cloud Function Казбек Learn.
+   Функция проверяет токен (verifyIdToken по projectId проекта «Казбек»),
+   создаёт запись связи в Firebase Казбек Learn и возвращает customToken.
+   Казбек Learn входит через signInWithCustomToken(customToken). */
+export function learnUrl() {
+  return KAZBEK_LEARN.url || "";
+}
+
+export async function linkLearn() {
+  requireFirebase();
+  if (!KAZBEK_LEARN.linkEndpoint) {
+    const err = new Error("Привязка Learn не настроена");
+    err.code = "kazbek/learn-not-configured";
+    throw err;
+  }
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch(KAZBEK_LEARN.linkEndpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${idToken}` }
+  });
+  if (!res.ok) {
+    const err = new Error("Ошибка привязки");
+    err.code = "kazbek/learn-failed";
+    throw err;
+  }
+  const { customToken } = await res.json();
+  if (KAZBEK_LEARN.url && customToken) {
+    // Токен передаём во фрагменте (после #) — он не попадает в логи серверов.
+    window.open(`${KAZBEK_LEARN.url}#kazbekToken=${encodeURIComponent(customToken)}`, "_blank", "noopener");
+  }
+}
