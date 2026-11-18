@@ -22,7 +22,7 @@ export const firebaseConfig = {
 // =========================================================
 export const KAZBEK_LEARN = {
   url: "https://kazbeklearn.github.io/learn",
-  linkEndpoint: "https://kazbek-link.mstf1029mir.workers.dev"
+  linkEndpoint: "https://kazbek-api.mstf1029mir.workers.dev"
 };
 
 /*
