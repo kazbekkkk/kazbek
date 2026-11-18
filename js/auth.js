@@ -50,7 +50,7 @@ const MESSAGES = {
   "auth/user-disabled": "Этот аккаунт заблокирован.",
   "auth/operation-not-allowed": "Этот способ входа не включён в Firebase Console.",
   "auth/unauthorized-domain": "Домен сайта не добавлен в Authorized domains в Firebase Console.",
-  "auth/requires-recent-login": "Для этого действия войдите заново."
+  "auth/requires-recent-login": "Для этого действия войдите заново.",
   "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
   "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
 };
