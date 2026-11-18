@@ -1,6 +1,6 @@
 import {
   isConfigured, watchAuth, getProfile, register, login, loginWithGoogle, resetPassword,
-  logout, updateName, resendVerification, linkLearn, learnUrl, humanError, isSilentError
+  logout, updateName, resendVerification, learnStatus, linkLearn, unlinkLearn, openLearn, learnUrl, humanError, isSilentError
 } from "./auth.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -214,7 +214,7 @@ document.addEventListener("click", (e) => {
   if (authBtn) { openAuth(authBtn.dataset.auth); return; }
 
   const cab = e.target.closest("[data-open-cabinet]");
-  if (cab) { openModal(cabinetModal); return; }
+  if (cab) { openModal(cabinetModal); refreshLearnStatus(); return; }
 
   const close = e.target.closest("[data-close]");
   if (close) { closeModal(close.closest("dialog")); return; }
@@ -406,22 +406,62 @@ $("#resendBtn").addEventListener("click", async () => {
   }
 });
 
+const learnForm = $("#learnLinkForm");
+const learnUnlink = $("#learnUnlinkBtn");
+let learnLinked = false;
+
+function renderLearn() {
+  learnBadge.textContent = learnLinked ? "Аккаунт привязан" : "Не привязан";
+  learnBadge.classList.toggle("is-ok", learnLinked);
+  learnBtn.textContent = learnLinked ? "Открыть Казбэк Learn" : "Привязать аккаунт";
+  learnUnlink.hidden = !learnLinked;
+  if (learnLinked) learnForm.hidden = true;
+}
+async function refreshLearnStatus() {
+  try { learnLinked = (await learnStatus()).linked; } catch (e) { learnLinked = false; }
+  renderLearn();
+}
+
 learnBtn.addEventListener("click", async () => {
   if (learnBtn.classList.contains("is-busy")) return;
-  if (state.profile?.services?.learn?.linked) {
-    if (learnUrl()) window.open(learnUrl(), "_blank", "noopener");
-    else toast("Казбэк Learn скоро откроется");
+  if (learnLinked) {
+    busy(learnBtn, true);
+    try { await openLearn(); } catch (err) { toast(humanError(err)); } finally { busy(learnBtn, false); }
     return;
   }
-  busy(learnBtn, true);
+  learnForm.hidden = !learnForm.hidden;
+  if (!learnForm.hidden) $("#learnEmail").focus();
+});
+
+learnForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("[type=submit]", learnForm);
+  if (btn.classList.contains("is-busy")) return;
+  clearForm(learnForm);
+  const email = $("#learnEmail").value.trim();
+  const password = $("#learnPassword").value;
+  let ok = true;
+  if (!EMAIL_RE.test(email)) { setError($("#learnEmail"), "Введите почту от Казбэк Learn"); ok = false; }
+  if (!password) { setError($("#learnPassword"), "Введите пароль"); ok = false; }
+  if (!ok) return;
+  busy(btn, true);
   try {
-    await linkLearn();
-    toast("Открываем Казбэк Learn");
+    await linkLearn(email, password);
+    learnForm.reset();
+    learnLinked = true;
+    renderLearn();
+    toast("Аккаунт Казбэк Learn привязан");
   } catch (err) {
     toast(humanError(err));
   } finally {
-    busy(learnBtn, false);
+    busy(btn, false);
   }
+});
+
+learnUnlink.addEventListener("click", async () => {
+  if (!confirm("Отвязать аккаунт Казбэк Learn?")) return;
+  try { await unlinkLearn(); learnLinked = false; renderLearn(); toast("Аккаунт отвязан"); }
+  catch (err) { toast(humanError(err)); }
 });
 
 /* =========================================================
@@ -498,11 +538,7 @@ function renderCabinet() {
   $("#cabVerify").hidden = user.emailVerified;
   if (document.activeElement !== profileForm.name) profileForm.name.value = user.displayName || "";
 
-  const linked = Boolean(state.profile?.services?.learn?.linked);
-  learnBadge.textContent = linked ? "Аккаунт привязан" : "Не привязан";
-  learnBadge.classList.toggle("is-ok", linked);
-  $(".btn__label", learnBtn)?.remove();
-  learnBtn.textContent = linked ? "Открыть Казбэк Learn" : "Привязать аккаунт";
+  renderLearn();
 }
 
 watchAuth(async (user) => {
