@@ -540,3 +540,4 @@ a { color: inherit; text-decoration: none; }
 .brand__logo { height: 56px; width: auto; aspect-ratio: 16 / 9; object-fit: contain; }
 .brand--footer .brand__logo { height: 84px; }
 @media (max-width: 860px) { .brand__logo { height: 48px; } }
+.learn-form { margin-top: 14px; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r-md); }
