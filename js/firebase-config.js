@@ -21,7 +21,7 @@ export const firebaseConfig = {
 //                Пока пусто — кнопка «Привязать аккаунт» показывает подсказку.
 // =========================================================
 export const KAZBEK_LEARN = {
-  url: "https://kazbeklearn.github.io",
+  url: "https://kazbeklearn.github.io/learn",
   linkEndpoint: "https://kazbek-link.mstf1029mir.workers.dev"
 };
 
