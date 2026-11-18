@@ -51,6 +51,8 @@ const MESSAGES = {
   "auth/operation-not-allowed": "Этот способ входа не включён в Firebase Console.",
   "auth/unauthorized-domain": "Домен сайта не добавлен в Authorized domains в Firebase Console.",
   "auth/requires-recent-login": "Для этого действия войдите заново."
+  "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
+  "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
 };
 
 export function humanError(err) {
@@ -163,26 +165,50 @@ export function learnUrl() {
   return KAZBEK_LEARN.url || "";
 }
 
-export async function linkLearn() {
+async function learnCall(action, extra = {}) {
   requireFirebase();
   if (!KAZBEK_LEARN.linkEndpoint) {
-    const err = new Error("Привязка Learn не настроена");
+    const err = new Error("not configured");
     err.code = "kazbek/learn-not-configured";
     throw err;
   }
   const idToken = await auth.currentUser.getIdToken();
-  const res = await fetch(KAZBEK_LEARN.linkEndpoint, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${idToken}` }
-  });
-  if (!res.ok) {
-    const err = new Error("Ошибка привязки");
-    err.code = "kazbek/learn-failed";
+  let res;
+  try {
+    res = await fetch(KAZBEK_LEARN.linkEndpoint, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...extra })
+    });
+  } catch (e) {
+    const err = new Error("network");
+    err.code = "auth/network-request-failed";
     throw err;
   }
-  const { customToken } = await res.json();
-  if (KAZBEK_LEARN.url && customToken) {
-    // Токен передаём во фрагменте (после #) — он не попадает в логи серверов.
-    window.open(`${KAZBEK_LEARN.url}#kazbekToken=${encodeURIComponent(customToken)}`, "_blank", "noopener");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || "failed");
+    err.code = data.error === "bad_credentials" ? "kazbek/learn-bad-credentials"
+             : data.error === "already_linked" ? "kazbek/learn-already-linked"
+             : "kazbek/learn-failed";
+    throw err;
+  }
+  return data;
+}
+
+export const learnStatus = () => learnCall("status");
+export const linkLearn = (email, password) => learnCall("link", { email, password });
+export const unlinkLearn = () => learnCall("unlink");
+
+export async function openLearn() {
+  const base = learnUrl();
+  const w = window.open("about:blank", "_blank"); // открываем сразу, чтобы браузер не заблокировал
+  try {
+    const { customToken } = await learnCall("open");
+    const url = `${base}#kazbekToken=${encodeURIComponent(customToken)}`;
+    if (w) w.location.href = url; else location.href = url;
+  } catch (e) {
+    if (w) w.close();
+    throw e;
   }
 }
