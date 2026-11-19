@@ -134,13 +134,13 @@ matchMedia("(min-width: 861px)").addEventListener("change", () => setMenu(false)
   }
 });
 
-$("#year").textContent = new Date().getFullYear();
 
 /* =========================================================
    Окна
    ========================================================= */
 const authModal = $("#authModal");
 const cabinetModal = $("#cabinetModal");
+const noticeModal = $("#noticeModal");
 
 function openModal(modal) {
   setMenu(false);
@@ -151,9 +151,19 @@ function closeModal(modal) {
   modal.classList.add("is-closing");
   setTimeout(() => { modal.close(); modal.classList.remove("is-closing"); }, 200);
 }
-[authModal, cabinetModal].forEach((m) => {
+[authModal, cabinetModal, noticeModal].forEach((m) => {
   m.addEventListener("click", (e) => { if (e.target === m) closeModal(m); });
 });
+
+/* ---------- Предупреждение при первом визите ---------- */
+(function showNoticeOnce() {
+  const KEY = "kazbek_notice_seen_v1";
+  let seen = false;
+  try { seen = localStorage.getItem(KEY) === "1"; } catch (e) {}
+  if (seen) return;
+  try { localStorage.setItem(KEY, "1"); } catch (e) {}
+  setTimeout(() => openModal(noticeModal), 900);
+})();
 
 /* ---------- Формы: общие помощники ---------- */
 const authStatus = $("#authStatus");
