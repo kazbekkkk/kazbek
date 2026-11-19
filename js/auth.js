@@ -35,6 +35,8 @@ const MESSAGES = {
   "kazbek/not-configured": "Firebase ещё не подключён. Добавьте ключи проекта в firebase-config.js.",
   "kazbek/learn-not-configured": "Привязка заработает после подключения Казбэк Learn (firebase-config.js).",
   "kazbek/learn-failed": "Не удалось привязать Казбэк Learn. Попробуйте позже.",
+  "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
+  "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
   "auth/invalid-email": "Проверьте адрес почты — он указан неверно.",
   "auth/user-not-found": "Аккаунт с такой почтой не найден.",
   "auth/wrong-password": "Неверный пароль. Попробуйте ещё раз или восстановите пароль.",
@@ -50,9 +52,7 @@ const MESSAGES = {
   "auth/user-disabled": "Этот аккаунт заблокирован.",
   "auth/operation-not-allowed": "Этот способ входа не включён в Firebase Console.",
   "auth/unauthorized-domain": "Домен сайта не добавлен в Authorized domains в Firebase Console.",
-  "auth/requires-recent-login": "Для этого действия войдите заново.",
-  "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
-  "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
+  "auth/requires-recent-login": "Для этого действия войдите заново."
 };
 
 export function humanError(err) {
