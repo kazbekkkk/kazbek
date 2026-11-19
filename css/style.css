@@ -67,7 +67,7 @@ a { color: inherit; text-decoration: none; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   min-height: 46px; padding: 0 22px;
-  border: 1.5px solid transparent; border-radius: 999px;
+  border: 1.5px solid transparent; border-radius: 999px; background: transparent;
   font-weight: 600; font-size: 15.5px; line-height: 1; white-space: nowrap;
   transition: background .25s, color .25s, border-color .25s, transform .25s var(--ease), box-shadow .25s;
 }
@@ -540,4 +540,20 @@ a { color: inherit; text-decoration: none; }
 .brand__logo { height: 56px; width: auto; aspect-ratio: 16 / 9; object-fit: contain; }
 .brand--footer .brand__logo { height: 84px; }
 @media (max-width: 860px) { .brand__logo { height: 48px; } }
+
+/* ---------- Привязка Казбэк Learn ---------- */
 .learn-form { margin-top: 14px; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r-md); }
+
+/* ---------- Логотип в окне входа ---------- */
+.modal__side-logo { display: inline-flex; align-self: flex-start; padding: 6px 16px; background: #fff; border-radius: 18px; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .35); }
+.modal__side-logo img { height: 56px; width: auto; aspect-ratio: 16 / 9; object-fit: contain; }
+
+/* ---------- Окно предупреждения ---------- */
+#noticeModal { width: min(540px, 100% - 24px); }
+.modal__panel--notice { padding: clamp(26px, 4vw, 40px); }
+.notice__icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 16px; border-radius: 16px; background: var(--blue-100); color: var(--blue); }
+.notice__icon svg { width: 28px; height: 28px; }
+.notice__text { margin-top: 14px; font-size: 16px; line-height: 1.65; color: var(--ink); }
+
+/* ---------- Текст в подвале ---------- */
+.footer__notice { max-width: 82ch; line-height: 1.6; }
