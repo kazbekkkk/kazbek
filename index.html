@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;600;700&display=swap&subset=cyrillic" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="is-loading">
 
@@ -20,7 +20,7 @@
   <!-- ============ ШАПКА ============ -->
   <header class="site-header" id="header">
     <a class="brand" href="#top" aria-label="МДМЦ «Казбэк» — на главную">
-      <img class="brand__logo" src="assets/logo_kazbek.png" alt="Казбэк" width="1920" height="1080">
+      <img class="brand__logo" src="assets/logo-kazbek.png" alt="Казбэк" width="1920" height="1080">
     </a>
 
     <nav class="nav" id="nav" aria-label="Основная навигация">
@@ -50,7 +50,7 @@
       <div class="hero__media" id="heroMedia">
         <div class="hero__parallax" id="heroParallax">
           <div class="hero__zoom">
-            <!-- Положите фото здания рядом с index.html под именем kazbek-building.jpg (16:9, от 1920×1080).
+            <!-- Положите фото здания рядом с index.html под именем assets/kazbek-building.jpg (16:9, от 1920×1080).
                  Пока файла нет — показывается иллюстрация ниже. -->
             <svg class="hero__fallback" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
               <defs>
@@ -86,7 +86,7 @@
               <rect x="0" y="770" width="1600" height="130" fill="#0A2A63"/>
               <rect x="0" y="770" width="1600" height="10" fill="#165FCD"/>
             </svg>
-            <img class="hero__img" src="kazbek-building.jpg" alt="Здание международного детского и молодёжного центра «Казбэк»" fetchpriority="high" onerror="this.remove()">
+            <img class="hero__img" src="assets/kazbek-building.jpg" alt="Здание международного детского и молодёжного центра «Казбэк»" fetchpriority="high" onerror="this.remove()">
           </div>
         </div>
         <div class="hero__shade"></div>
@@ -434,6 +434,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
