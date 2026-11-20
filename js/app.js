@@ -1,6 +1,6 @@
 import {
   isConfigured, watchAuth, getProfile, register, login, loginWithGoogle, resetPassword,
-  logout, updateName, resendVerification, learnStatus, linkLearn, unlinkLearn, openLearn, learnUrl, humanError, isSilentError
+  logout, updateName, resendVerification, ensurePublicId, setLearnLinkedHint, learnStatus, linkLearn, unlinkLearn, openLearn, learnUrl, humanError, isSilentError
 } from "./auth.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -14,12 +14,24 @@ document.documentElement.classList.add("js");
    Уведомления
    ========================================================= */
 const toastEl = $("#toast");
-let toastTimer;
+let toastTimer, toastHideTimer;
+const toastIsPopover = typeof toastEl.showPopover === "function";
 function toast(message) {
   toastEl.textContent = message;
-  toastEl.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 4200);
+  clearTimeout(toastHideTimer);
+  if (toastIsPopover) {
+    // Popover попадает в верхний слой браузера и рисуется поверх любых окон.
+    // Перезапуск ставит его выше окон, которые открыли после прошлого уведомления.
+    try { toastEl.hidePopover(); } catch (e) {}
+    try { toastEl.showPopover(); } catch (e) {}
+  }
+  void toastEl.offsetWidth;
+  toastEl.classList.add("show");
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove("show");
+    if (toastIsPopover) toastHideTimer = setTimeout(() => { try { toastEl.hidePopover(); } catch (e) {} }, 400);
+  }, 4200);
 }
 
 /* =========================================================
@@ -224,7 +236,7 @@ document.addEventListener("click", (e) => {
   if (authBtn) { openAuth(authBtn.dataset.auth); return; }
 
   const cab = e.target.closest("[data-open-cabinet]");
-  if (cab) { openModal(cabinetModal); refreshLearnStatus(); return; }
+  if (cab) { openModal(cabinetModal); refreshProfile().then(refreshLearnStatus); return; }
 
   const close = e.target.closest("[data-close]");
   if (close) { closeModal(close.closest("dialog")); return; }
@@ -419,24 +431,45 @@ $("#resendBtn").addEventListener("click", async () => {
 const learnForm = $("#learnLinkForm");
 const learnUnlink = $("#learnUnlinkBtn");
 let learnLinked = false;
+let profileLoaded = false;   // пока профиль не прочитан, статус неизвестен
 
 function renderLearn() {
-  learnBadge.textContent = learnLinked ? "Аккаунт привязан" : "Не привязан";
-  learnBadge.classList.toggle("is-ok", learnLinked);
+  const unknown = !profileLoaded;
+  learnBadge.textContent = unknown ? "Проверяем…" : learnLinked ? "Аккаунт привязан" : "Не привязан";
+  learnBadge.classList.toggle("is-ok", !unknown && learnLinked);
   learnBtn.textContent = learnLinked ? "Открыть Казбэк Learn" : "Привязать аккаунт";
-  learnUnlink.hidden = !learnLinked;
+  learnBtn.disabled = unknown;
+  learnUnlink.hidden = unknown || !learnLinked;
   if (learnLinked) learnForm.hidden = true;
 }
-async function refreshLearnStatus() {
-  try { learnLinked = (await learnStatus()).linked; } catch (e) { learnLinked = false; }
+
+// Единственное место, где меняется статус: запоминаем и в Firestore,
+// чтобы он совпадал на всех устройствах и показывался сразу
+function setLearnLinked(value) {
+  learnLinked = value;
+  if (state.profile) state.profile.learnLinked = value;
   renderLearn();
+  if (state.user) setLearnLinkedHint(state.user.uid, value);
+}
+
+// Worker только дополняет картину: его хранилище между серверами обновляется с задержкой
+// до минуты, поэтому один его ответ «не привязан» статус не сбрасывает
+async function refreshLearnStatus() {
+  try {
+    const { linked } = await learnStatus();
+    if (linked && !learnLinked) setLearnLinked(true);
+  } catch (e) { /* нет связи — оставляем то, что уже известно */ }
 }
 
 learnBtn.addEventListener("click", async () => {
   if (learnBtn.classList.contains("is-busy")) return;
   if (learnLinked) {
     busy(learnBtn, true);
-    try { await openLearn(); } catch (err) { toast(humanError(err)); } finally { busy(learnBtn, false); }
+    try { await openLearn(); }
+    catch (err) {
+      if (err.code === "kazbek/learn-not-linked") setLearnLinked(false);
+      toast(humanError(err));
+    } finally { busy(learnBtn, false); }
     return;
   }
   learnForm.hidden = !learnForm.hidden;
@@ -458,8 +491,7 @@ learnForm.addEventListener("submit", async (e) => {
   try {
     await linkLearn(email, password);
     learnForm.reset();
-    learnLinked = true;
-    renderLearn();
+    setLearnLinked(true);
     toast("Аккаунт Казбэк Learn привязан");
   } catch (err) {
     toast(humanError(err));
@@ -470,7 +502,7 @@ learnForm.addEventListener("submit", async (e) => {
 
 learnUnlink.addEventListener("click", async () => {
   if (!confirm("Отвязать аккаунт Казбэк Learn?")) return;
-  try { await unlinkLearn(); learnLinked = false; renderLearn(); toast("Аккаунт отвязан"); }
+  try { await unlinkLearn(); setLearnLinked(false); toast("Аккаунт отвязан"); }
   catch (err) { toast(humanError(err)); }
 });
 
@@ -548,14 +580,37 @@ function renderCabinet() {
   $("#cabVerify").hidden = user.emailVerified;
   if (document.activeElement !== profileForm.name) profileForm.name.value = user.displayName || "";
 
+  const publicId = state.profile?.publicId || "";
+  $("#cabId").textContent = publicId;
+  $("#cabIdChip").hidden = !publicId;
+
+  learnLinked = Boolean(state.profile?.learnLinked);
   renderLearn();
+}
+
+$("#cabIdChip").addEventListener("click", async () => {
+  const id = state.profile?.publicId;
+  if (!id) return;
+  try { await navigator.clipboard.writeText(id); toast("ID скопирован"); }
+  catch (e) { toast("Ваш ID: " + id); }
+});
+
+// Читает профиль; если у старого аккаунта ещё нет ID — выдаёт его
+async function refreshProfile() {
+  const user = state.user;
+  if (!user) return;
+  let profile = await getProfile(user.uid);
+  if (profile && !profile.publicId) {
+    const id = await ensurePublicId(user);
+    if (id) profile = { ...profile, publicId: id };
+  }
+  if (state.user && state.user.uid === user.uid) { state.profile = profile; profileLoaded = true; renderCabinet(); }
 }
 
 watchAuth(async (user) => {
   state = { user, profile: null };
+  profileLoaded = false;
+  learnLinked = false;
   renderAuth();
-  if (user) {
-    state.profile = await getProfile(user.uid);
-    renderCabinet();
-  }
+  if (user) await refreshProfile();
 });
