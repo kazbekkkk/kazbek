@@ -5,7 +5,7 @@ import {
   updateProfile, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig, KAZBEK_LEARN } from "./firebase-config.js";
 
@@ -35,6 +35,7 @@ const MESSAGES = {
   "kazbek/not-configured": "Firebase ещё не подключён. Добавьте ключи проекта в firebase-config.js.",
   "kazbek/learn-not-configured": "Привязка заработает после подключения Казбэк Learn (firebase-config.js).",
   "kazbek/learn-failed": "Не удалось привязать Казбэк Learn. Попробуйте позже.",
+  "kazbek/learn-not-linked": "Привязка не найдена. Привяжите аккаунт Learn заново.",
   "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
   "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
   "auth/invalid-email": "Проверьте адрес почты — он указан неверно.",
@@ -76,9 +77,55 @@ async function ensureUserDoc(user, extra = {}) {
         services: { learn: { linked: false } }
       });
     }
+    await ensurePublicId(user);
   } catch (e) {
     // Правила Firestore могут быть ещё не настроены — вход при этом не ломаем.
     console.warn("Не удалось создать профиль в Firestore:", e);
+  }
+}
+
+/* ---------- Короткий ID аккаунта ----------
+   6 цифр. Уникальность гарантирует коллекция publicIds: номер занимается
+   транзакцией, поэтому два аккаунта не получат один и тот же. */
+export async function ensurePublicId(user) {
+  if (!isConfigured || !user) return null;
+  const userRef = doc(db, "users", user.uid);
+  try {
+    const first = await getDoc(userRef);
+    if (!first.exists()) return null;          // профиль ещё не создан
+    if (first.data().publicId) return first.data().publicId;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const id = String(Math.floor(100000 + Math.random() * 900000));
+      const idRef = doc(db, "publicIds", id);
+      try {
+        const result = await runTransaction(db, async (tx) => {
+          const [userSnap, idSnap] = await Promise.all([tx.get(userRef), tx.get(idRef)]);
+          const already = userSnap.data()?.publicId;
+          if (already) return already;
+          if (idSnap.exists()) return null;     // номер занят — пробуем другой
+          tx.set(idRef, { createdAt: serverTimestamp() });
+          tx.set(userRef, { publicId: id }, { merge: true });
+          return id;
+        });
+        if (result) return result;
+      } catch (e) {
+        if (e?.code === "permission-denied") throw e;
+      }
+    }
+  } catch (e) {
+    console.warn("Не удалось выдать ID (проверьте правила Firestore для publicIds):", e);
+  }
+  return null;
+}
+
+/* Статус привязки Learn хранится и в профиле Firestore — он одинаков на всех устройствах
+   и читается мгновенно. Настоящая связь лежит в Worker; здесь только отметка для экрана. */
+export async function setLearnLinkedHint(uid, linked) {
+  if (!isConfigured) return;
+  try {
+    await setDoc(doc(db, "users", uid), { learnLinked: Boolean(linked) }, { merge: true });
+  } catch (e) {
+    console.warn("Не удалось сохранить статус Learn:", e);
   }
 }
 
@@ -189,6 +236,7 @@ async function learnCall(action, extra = {}) {
   if (!res.ok) {
     const err = new Error(data.error || "failed");
     err.code = data.error === "bad_credentials" ? "kazbek/learn-bad-credentials"
+             : data.error === "not_linked" ? "kazbek/learn-not-linked"
              : data.error === "already_linked" ? "kazbek/learn-already-linked"
              : "kazbek/learn-failed";
     throw err;
