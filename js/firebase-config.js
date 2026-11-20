@@ -34,9 +34,15 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid;
-      // Менять displayName можно самому, а статус привязки Learn — только сервер.
+      // Имя менять можно, статус привязки Learn — нельзя; ID выдаётся один раз и не меняется.
       allow update: if request.auth != null && request.auth.uid == uid
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['services']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['services'])
+        && (!('publicId' in resource.data) || request.resource.data.publicId == resource.data.publicId);
+    }
+    // Занятые короткие ID: проверить можно, создать один раз, менять и удалять нельзя.
+    match /publicIds/{id} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null && id.matches('[0-9]{6}');
     }
   }
 }
