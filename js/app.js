@@ -177,7 +177,7 @@ function closeModal(modal) {
   setTimeout(() => openModal(noticeModal), 900);
 })();
 
-/* ---------- Пасхалка: клик по надписи «О нас» ---------- */
+/* ---------- Пасхалки: клик по «О нас» и по «Отдых» ---------- */
 const eggModal = $("#eggModal");
 const eggVideo = $("#eggVideo");
 
@@ -185,9 +185,10 @@ function closeEgg() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   if (eggModal.open) eggModal.close();
 }
-function openEgg() {
+function openEgg(src) {
   if (eggModal.open) return;
   setMenu(false);
+  if (!eggVideo.src.endsWith(src)) eggVideo.src = src;      // у каждой пасхалки своё видео
   eggModal.showModal();
   try {
     const fs = eggModal.requestFullscreen && eggModal.requestFullscreen();
@@ -198,13 +199,12 @@ function openEgg() {
   if (started) {
     started
       .catch(() => { eggVideo.muted = true; return eggVideo.play(); })   // если браузер не дал включить звук
-      .catch(() => { closeEgg(); toast("Не удалось запустить видео. Проверьте файл assets/pashalka.mp4"); });
+      .catch(() => { closeEgg(); toast(`Не удалось запустить видео. Проверьте файл ${src}`); });
   }
 }
-$(".about__label").addEventListener("click", openEgg);
+$$("[data-egg]").forEach((el) => el.addEventListener("click", () => openEgg(el.dataset.egg)));
 eggVideo.addEventListener("ended", closeEgg);                // видео закончилось — сайт возвращается
-$("#eggClose").addEventListener("click", closeEgg);
-eggModal.addEventListener("close", () => {                   // и по кнопке, и по Esc
+eggModal.addEventListener("close", () => {                   // и по окончании, и по Esc
   eggVideo.pause();
   eggVideo.currentTime = 0;
   eggVideo.muted = false;
