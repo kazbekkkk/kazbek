@@ -110,14 +110,14 @@
     <!-- ============ О НАС ============ -->
     <section class="about" id="about">
       <div class="wrap about__grid">
-        <h2 class="about__label" data-reveal>О нас</h2>
+        <h2 class="about__label" data-reveal data-egg="assets/pashalka.mp4">О нас</h2>
         <div>
           <p class="about__text" id="aboutText">МДМЦ «Казбэк» — пространство для развития, общения, образования и отдыха. Мы объединяем современные образовательные подходы, детский отдых и молодёжные инициативы, создавая возможности для новых открытий.</p>
           <ul class="about__tags" data-reveal>
             <li style="--d:0">Развитие</li>
             <li style="--d:1">Общение</li>
             <li style="--d:2">Образование</li>
-            <li style="--d:3">Отдых</li>
+            <li style="--d:3" data-egg="assets/pashalka1.mp4">Отдых</li>
           </ul>
         </div>
       </div>
@@ -430,12 +430,9 @@
     </div>
   </dialog>
 
-  <!-- ============ ПАСХАЛКА (клик по «О нас») ============ -->
+  <!-- ============ ПАСХАЛКИ (клик по «О нас» и по «Отдых») ============ -->
   <dialog class="egg" id="eggModal" aria-label="Видео">
-    <video id="eggVideo" src="assets/pashalka.mp4" playsinline preload="none"></video>
-    <button class="egg__close" type="button" id="eggClose" aria-label="Закрыть видео">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
+    <video id="eggVideo" playsinline preload="none"></video>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
