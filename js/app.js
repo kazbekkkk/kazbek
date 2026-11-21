@@ -177,6 +177,39 @@ function closeModal(modal) {
   setTimeout(() => openModal(noticeModal), 900);
 })();
 
+/* ---------- Пасхалка: клик по надписи «О нас» ---------- */
+const eggModal = $("#eggModal");
+const eggVideo = $("#eggVideo");
+
+function closeEgg() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (eggModal.open) eggModal.close();
+}
+function openEgg() {
+  if (eggModal.open) return;
+  setMenu(false);
+  eggModal.showModal();
+  try {
+    const fs = eggModal.requestFullscreen && eggModal.requestFullscreen();
+    if (fs && fs.catch) fs.catch(() => {});
+  } catch (e) {}
+  eggVideo.currentTime = 0;
+  const started = eggVideo.play();
+  if (started) {
+    started
+      .catch(() => { eggVideo.muted = true; return eggVideo.play(); })   // если браузер не дал включить звук
+      .catch(() => { closeEgg(); toast("Не удалось запустить видео. Проверьте файл assets/pashalka.mp4"); });
+  }
+}
+$(".about__label").addEventListener("click", openEgg);
+eggVideo.addEventListener("ended", closeEgg);                // видео закончилось — сайт возвращается
+$("#eggClose").addEventListener("click", closeEgg);
+eggModal.addEventListener("close", () => {                   // и по кнопке, и по Esc
+  eggVideo.pause();
+  eggVideo.currentTime = 0;
+  eggVideo.muted = false;
+});
+
 /* ---------- Формы: общие помощники ---------- */
 const authStatus = $("#authStatus");
 function showStatus(message, type) {
