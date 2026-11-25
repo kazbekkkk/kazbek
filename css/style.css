@@ -577,3 +577,7 @@ a { color: inherit; text-decoration: none; }
 @keyframes eggIn { from { opacity: 0; } }
 .egg video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
 body:has(.egg[open]) { overflow: hidden; }
+
+/* ---------- Привязка Learn: шаг с кодом ---------- */
+#learnCode { text-align: center; font-size: 1.4rem; font-weight: 600; letter-spacing: .4em; }
+.learn-code-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; }
