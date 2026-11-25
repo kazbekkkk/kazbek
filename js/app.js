@@ -1,6 +1,6 @@
 import {
   isConfigured, watchAuth, getProfile, register, login, loginWithGoogle, resetPassword,
-  logout, updateName, resendVerification, ensurePublicId, setLearnLinkedHint, learnStatus, linkLearn, unlinkLearn, openLearn, learnUrl, humanError, isSilentError
+  logout, updateName, resendVerification, ensurePublicId, setLearnLinkedHint, learnStatus, startLinkLearn, resendLinkCode, confirmLinkLearn, unlinkLearn, openLearn, learnUrl, humanError, isSilentError
 } from "./auth.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -506,24 +506,55 @@ learnBtn.addEventListener("click", async () => {
     return;
   }
   learnForm.hidden = !learnForm.hidden;
-  if (!learnForm.hidden) $("#learnEmail").focus();
+  if (!learnForm.hidden) showLearnStep(learnStep);   // открываем на текущем шаге и ставим курсор
 });
+
+let learnStep = "login";
+function showLearnStep(step) {
+  learnStep = step;
+  $("#learnStepLogin").hidden = step !== "login";
+  $("#learnStepCode").hidden = step !== "code";
+  clearForm(learnForm);
+  (step === "login" ? $("#learnLogin") : $("#learnCode")).focus();
+}
 
 learnForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const btn = $("[type=submit]", learnForm);
+  const stepEl = learnStep === "login" ? $("#learnStepLogin") : $("#learnStepCode");
+  const btn = $("[type=submit]", stepEl);
   if (btn.classList.contains("is-busy")) return;
   clearForm(learnForm);
-  const email = $("#learnEmail").value.trim();
-  const password = $("#learnPassword").value;
-  let ok = true;
-  if (!EMAIL_RE.test(email)) { setError($("#learnEmail"), "Введите почту от Казбэк Learn"); ok = false; }
-  if (!password) { setError($("#learnPassword"), "Введите пароль"); ok = false; }
-  if (!ok) return;
+
+  if (learnStep === "login") {
+    const login = $("#learnLogin").value.trim();
+    const password = $("#learnPassword").value;
+    let ok = true;
+    if (!login) { setError($("#learnLogin"), "Введите логин от Казбэк Learn"); ok = false; }
+    if (!password) { setError($("#learnPassword"), "Введите пароль"); ok = false; }
+    if (!ok) return;
+    busy(btn, true);
+    try {
+      const res = await startLinkLearn(login, password);
+      $("#learnPassword").value = "";
+      $("#learnCode").value = "";
+      $("#learnCodeLead").textContent = `Мы отправили код на ${res.email}. Он действует 10 минут.`;
+      showLearnStep("code");
+      toast("Код отправлен на почту");
+    } catch (err) {
+      toast(humanError(err));
+    } finally {
+      busy(btn, false);
+    }
+    return;
+  }
+
+  const code = $("#learnCode").value.trim();
+  if (!/^\d{6}$/.test(code)) { setError($("#learnCode"), "Введите 6 цифр из письма"); return; }
   busy(btn, true);
   try {
-    await linkLearn(email, password);
+    await confirmLinkLearn(code);
     learnForm.reset();
+    showLearnStep("login");
     setLearnLinked(true);
     toast("Аккаунт Казбэк Learn привязан");
   } catch (err) {
@@ -532,6 +563,12 @@ learnForm.addEventListener("submit", async (e) => {
     busy(btn, false);
   }
 });
+
+$("#learnResendBtn").addEventListener("click", async () => {
+  try { const res = await resendLinkCode(); toast(`Новый код отправлен на ${res.email}`); }
+  catch (err) { toast(humanError(err)); }
+});
+$("#learnBackBtn").addEventListener("click", () => showLearnStep("login"));
 
 learnUnlink.addEventListener("click", async () => {
   if (!confirm("Отвязать аккаунт Казбэк Learn?")) return;
