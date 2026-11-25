@@ -36,7 +36,14 @@ const MESSAGES = {
   "kazbek/learn-not-configured": "Привязка заработает после подключения Казбэк Learn (firebase-config.js).",
   "kazbek/learn-failed": "Не удалось привязать Казбэк Learn. Попробуйте позже.",
   "kazbek/learn-not-linked": "Привязка не найдена. Привяжите аккаунт Learn заново.",
-  "kazbek/learn-bad-credentials": "Неверная почта или пароль от Казбэк Learn.",
+  "kazbek/learn-bad-credentials": "Неверный логин или пароль от Казбэк Learn.",
+  "kazbek/learn-no-email": "К этому аккаунту Learn не привязана почта. Войдите в Казбэк Learn, привяжите и подтвердите почту, затем повторите.",
+  "kazbek/learn-bad-code": "Неверный код. Проверьте письмо и попробуйте ещё раз.",
+  "kazbek/learn-code-expired": "Код устарел. Нажмите «Отправить код ещё раз» или начните заново.",
+  "kazbek/learn-too-many": "Слишком много неверных попыток. Запросите новый код.",
+  "kazbek/learn-wait": "Подождите минуту перед повторной отправкой.",
+  "kazbek/learn-quota": "Сегодня отправлено слишком много писем. Попробуйте завтра.",
+  "kazbek/learn-send-failed": "Не удалось отправить письмо. Попробуйте позже.",
   "kazbek/learn-already-linked": "Этот аккаунт Learn уже привязан к другому аккаунту Казбэк.",
   "auth/invalid-email": "Проверьте адрес почты — он указан неверно.",
   "auth/user-not-found": "Аккаунт с такой почтой не найден.",
@@ -235,17 +242,29 @@ async function learnCall(action, extra = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error || "failed");
-    err.code = data.error === "bad_credentials" ? "kazbek/learn-bad-credentials"
-             : data.error === "not_linked" ? "kazbek/learn-not-linked"
-             : data.error === "already_linked" ? "kazbek/learn-already-linked"
-             : "kazbek/learn-failed";
+    const CODES = {
+      bad_credentials: "kazbek/learn-bad-credentials",
+      already_linked: "kazbek/learn-already-linked",
+      not_linked: "kazbek/learn-not-linked",
+      no_email: "kazbek/learn-no-email",
+      bad_code: "kazbek/learn-bad-code",
+      expired: "kazbek/learn-code-expired",
+      too_many_attempts: "kazbek/learn-too-many",
+      rate_limited: "kazbek/learn-wait",
+      quota: "kazbek/learn-quota",
+      send_failed: "kazbek/learn-send-failed"
+    };
+    err.code = CODES[data.error] || "kazbek/learn-failed";
     throw err;
   }
   return data;
 }
 
 export const learnStatus = () => learnCall("status");
-export const linkLearn = (email, password) => learnCall("link", { email, password });
+// Привязка в два шага: логин и пароль Learn → код из письма на почту этого аккаунта
+export const startLinkLearn = (login, password) => learnCall("link", { login, password });
+export const resendLinkCode = () => learnCall("link_resend");
+export const confirmLinkLearn = (code) => learnCall("link_confirm", { code });
 export const unlinkLearn = () => learnCall("unlink");
 
 export async function openLearn() {
