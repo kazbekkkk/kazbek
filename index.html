@@ -382,18 +382,33 @@
         </div>
 
         <form class="form learn-form" id="learnLinkForm" hidden novalidate>
-          <p class="form__lead">Введите почту и пароль, которыми вы входите в Казбэк Learn. Пароль нигде не сохраняется.</p>
-          <div class="field">
-            <label for="learnEmail">Почта Казбэк Learn</label>
-            <input id="learnEmail" type="email" autocomplete="off" inputmode="email" placeholder="name@example.com">
-            <p class="field__error" role="alert"></p>
+          <div class="form" id="learnStepLogin">
+            <p class="form__lead">Введите логин и пароль, которыми вы входите в Казбэк Learn. Затем мы отправим код на почту, привязанную к этому аккаунту. Пароль нигде не сохраняется.</p>
+            <div class="field">
+              <label for="learnLogin">Логин Казбэк Learn</label>
+              <input id="learnLogin" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ваш логин">
+              <p class="field__error" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="learnPassword">Пароль Казбэк Learn</label>
+              <input id="learnPassword" type="password" autocomplete="off" placeholder="Пароль">
+              <p class="field__error" role="alert"></p>
+            </div>
+            <button class="btn btn--primary" type="submit"><span class="btn__label">Продолжить</span><span class="spinner" aria-hidden="true"></span></button>
           </div>
-          <div class="field">
-            <label for="learnPassword">Пароль Казбэк Learn</label>
-            <input id="learnPassword" type="password" autocomplete="off" placeholder="Пароль">
-            <p class="field__error" role="alert"></p>
+          <div class="form" id="learnStepCode" hidden>
+            <p class="form__lead" id="learnCodeLead">Мы отправили код на почту аккаунта Learn.</p>
+            <div class="field">
+              <label for="learnCode">Код из письма</label>
+              <input id="learnCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+              <p class="field__error" role="alert"></p>
+            </div>
+            <button class="btn btn--primary" type="submit"><span class="btn__label">Подтвердить</span><span class="spinner" aria-hidden="true"></span></button>
+            <div class="learn-code-actions">
+              <button class="link-btn" type="button" id="learnResendBtn">Отправить код ещё раз</button>
+              <button class="link-btn" type="button" id="learnBackBtn">Назад</button>
+            </div>
           </div>
-          <button class="btn btn--primary" type="submit"><span class="btn__label">Привязать</span><span class="spinner" aria-hidden="true"></span></button>
         </form>
         <button class="link-btn" type="button" id="learnUnlinkBtn" hidden style="margin-top:10px;">Отвязать аккаунт Learn</button>
       </section>
