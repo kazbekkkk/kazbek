@@ -219,6 +219,15 @@ export function learnUrl() {
   return KAZBEK_LEARN.url || "";
 }
 
+async function fetchRetry(url, opts, tries = 3, timeoutMs = 9000) {
+    let last;
+    for (let i = 0; i < tries; i++) {
+        try { return await fetch(url, { ...opts, signal: AbortSignal.timeout(timeoutMs) }); }
+        catch (e) { last = e; await new Promise(r => setTimeout(r, 600 * (i + 1))); }
+    }
+    throw last;
+}
+
 async function learnCall(action, extra = {}) {
   requireFirebase();
   if (!KAZBEK_LEARN.linkEndpoint) {
@@ -229,7 +238,7 @@ async function learnCall(action, extra = {}) {
   const idToken = await auth.currentUser.getIdToken();
   let res;
   try {
-    res = await fetch(KAZBEK_LEARN.linkEndpoint, {
+    res = await fetchRetry(KAZBEK_LEARN.linkEndpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...extra })
